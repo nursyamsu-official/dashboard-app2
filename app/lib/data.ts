@@ -18,13 +18,13 @@ export async function fetchRevenue() {
     // Artificially delay a response for demo purposes.
     // Don't do this in production :)
 
-    // console.log('Fetching revenue data...');
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log("Fetching revenue data...");
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const data = await db.select().from(revenueTable);
     // console.log(data);
 
-    // console.log('Data fetch completed after 3 seconds.');
+    console.log("Data fetch completed after 3 seconds.");
 
     return data;
   } catch (error) {
@@ -51,13 +51,13 @@ export async function fetchLatestInvoices() {
       )
       .orderBy(desc(invoicesTable.date))
       .limit(5);
-    console.log(data);
+    // console.log(data);
 
     const latestInvoices = data.map((invoice) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
-    console.log(latestInvoices);
+    // console.log(latestInvoices);
     return latestInvoices;
   } catch (error) {
     console.error("Database Error:", error);
@@ -73,10 +73,6 @@ export async function fetchCardData() {
 
     const invoiceCountPromise = await db.$count(invoicesTable);
     const customerCountPromise = await db.$count(customersTable);
-    // const invoiceStatusPromise = sql`SELECT
-    //      SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-    //      SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-    //      FROM invoices`;
 
     const invoiceStatusPromise = await db.execute(
       sql`select
@@ -84,21 +80,19 @@ export async function fetchCardData() {
          sum(case when ${invoicesTable.status} = 'pending' then ${invoicesTable.amount} ELSE 0 end) as "pending"
          from ${invoicesTable}`
     );
-    console.log(invoiceStatusPromise);
+    // console.log(invoiceStatusPromise);
 
     const data = await Promise.all([
       invoiceCountPromise,
       customerCountPromise,
       invoiceStatusPromise,
     ]);
-    console.log(data);
+    // console.log(data);
 
     const numberOfInvoices = Number(data[0] ?? "0");
     const numberOfCustomers = Number(data[1] ?? "0");
     const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? "0");
-    // const totalPaidInvoices = data[2].rows[0].paid;
     const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? "0");
-    // const totalPendingInvoices = data[2].rows[0].pending;
 
     return {
       numberOfCustomers,
