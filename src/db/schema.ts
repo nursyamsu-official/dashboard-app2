@@ -6,28 +6,29 @@ export const usersTable = pgTable("users", {
   name: varchar({ length: 255 }).notNull(),
   age: integer().notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
-  password: text()
+  password: text(),
 });
 
 export const invoicesTable = pgTable("invoices", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   // id: integer().primaryKey(),
-  customer_id: integer(),
+  customer_id: integer()
+    .notNull()
+    .references(() => customersTable.id),
   amount: integer(),
-  status: varchar({length:100}),
+  status: varchar({ length: 100 }),
   date: date(),
 });
 
 export const customersTable = pgTable("customers", {
-    // id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    id: integer().primaryKey(),
-    name: varchar().notNull(),
-    email: varchar({length: 200}).notNull().unique(),
-    img_url: varchar({length: 255})
-})
+  // id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  id: integer().primaryKey(),
+  name: varchar().notNull(),
+  email: varchar({ length: 200 }).notNull().unique(),
+  img_url: varchar({ length: 255 }),
+});
 
 export const revenueTable = pgTable("revenue", {
-  month: varchar({length: 10}).notNull().unique(),
+  month: varchar({ length: 10 }).notNull().unique(),
   revenue: integer().notNull(),
-})
-
+});

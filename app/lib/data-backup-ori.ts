@@ -1,4 +1,4 @@
-// import { sql } from "@vercel/postgres";
+import { sql } from "@vercel/postgres";
 import {
   CustomerField,
   CustomersTableType,
@@ -9,9 +9,7 @@ import {
 } from "./definitions";
 import { formatCurrency } from "./utils";
 import { db } from "@/src";
-import { customersTable, invoicesTable, revenueTable } from "@/src/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { invoicesTable, revenueTable } from "@/src/db/schema";
 
 export async function fetchRevenue() {
   try {
@@ -21,11 +19,14 @@ export async function fetchRevenue() {
     // console.log('Fetching revenue data...');
     // await new Promise((resolve) => setTimeout(resolve, 3000));
 
+    // const data = await sql<Revenue>`SELECT * FROM revenue`; //ORIGINAL
     const data = await db.select().from(revenueTable);
-    // console.log(data);
+    console.log(data);
+    // const datanya = await data.json();
 
     // console.log('Data fetch completed after 3 seconds.');
 
+    // return data.rows;
     return data;
   } catch (error) {
     console.error("Database Error:", error);
@@ -35,29 +36,19 @@ export async function fetchRevenue() {
 
 export async function fetchLatestInvoices() {
   try {
-    const data = await db
-      .select({
-        amount: invoicesTable.amount,
-        name: customersTable.name,
-        image_url: customersTable.img_url,
-        email: customersTable.email,
-        id: invoicesTable.id,
-        date: invoicesTable.date,
-      })
-      .from(invoicesTable)
-      .leftJoin(
-        customersTable,
-        eq(invoicesTable.customer_id, customersTable.id)
-      )
-      .orderBy(desc(invoicesTable.date))
-      .limit(5);
-    console.log(data);
+    const data = await sql<LatestInvoiceRaw>`
+      SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
+      FROM invoices
+      JOIN customers ON invoices.customer_id = customers.id
+      ORDER BY invoices.date DESC
+      LIMIT 5`;
 
-    const latestInvoices = data.map((invoice) => ({
+    const data = await db.select().from(invoicesTable);
+
+    const latestInvoices = data.rows.map((invoice) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
-    console.log(latestInvoices);
     return latestInvoices;
   } catch (error) {
     console.error("Database Error:", error);
@@ -70,35 +61,23 @@ export async function fetchCardData() {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-
-    const invoiceCountPromise = await db.$count(invoicesTable);
-    const customerCountPromise = await db.$count(customersTable);
-    // const invoiceStatusPromise = sql`SELECT
-    //      SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-    //      SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-    //      FROM invoices`;
-
-    const invoiceStatusPromise = await db.execute(
-      sql`select
-         sum(case when ${invoicesTable.status} = 'paid' then ${invoicesTable.amount} ELSE 0 end) as "paid",
-         sum(case when ${invoicesTable.status} = 'pending' then ${invoicesTable.amount} ELSE 0 end) as "pending"
-         from ${invoicesTable}`
-    );
-    console.log(invoiceStatusPromise);
+    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+    const invoiceStatusPromise = sql`SELECT
+         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
+         FROM invoices`;
 
     const data = await Promise.all([
       invoiceCountPromise,
       customerCountPromise,
       invoiceStatusPromise,
     ]);
-    console.log(data);
 
-    const numberOfInvoices = Number(data[0] ?? "0");
-    const numberOfCustomers = Number(data[1] ?? "0");
+    const numberOfInvoices = Number(data[0].rows[0].count ?? "0");
+    const numberOfCustomers = Number(data[1].rows[0].count ?? "0");
     const totalPaidInvoices = formatCurrency(data[2].rows[0].paid ?? "0");
-    // const totalPaidInvoices = data[2].rows[0].paid;
     const totalPendingInvoices = formatCurrency(data[2].rows[0].pending ?? "0");
-    // const totalPendingInvoices = data[2].rows[0].pending;
 
     return {
       numberOfCustomers,
