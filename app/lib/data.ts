@@ -12,6 +12,7 @@ import { db } from "@/src";
 import { customersTable, invoicesTable, revenueTable } from "@/src/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { customers } from "./placeholder-data";
 
 export async function fetchRevenue() {
   try {
@@ -127,7 +128,7 @@ export async function fetchFilteredInvoices(
         ${invoicesTable.amount}::text ILIKE ${`%${query}%`} OR
         ${invoicesTable.date}::text ILIKE ${`%${query}%`} OR
         ${invoicesTable.status} ILIKE ${`%${query}%`}
-      ORDER BY ${invoicesTable.date} DESC
+      ORDER BY ${invoicesTable.id} DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`
     );
     return invoices.rows;
@@ -186,15 +187,13 @@ export async function fetchInvoiceById(id: string) {
 
 export async function fetchCustomers() {
   try {
-    const data = await sql<CustomerField>`
-      SELECT
-        id,
-        name
-      FROM customers
-      ORDER BY name ASC
-    `;
-
-    const customers = data.rows;
+    const customers = await db
+      .select({
+        id: customersTable.id,
+        name: customersTable.name,
+      })
+      .from(customersTable)
+      .orderBy(customersTable.name);
     return customers;
   } catch (err) {
     console.error("Database Error:", err);
