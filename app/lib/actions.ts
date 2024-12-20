@@ -1,9 +1,11 @@
 "use server";
 
-import { z } from "zod";
+import { custom, z } from "zod";
 import { db } from "@/src";
 import { invoicesTable } from "@/src/db/schema";
 import { redirect } from "next/navigation";
+import { eq, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 // import { revalidatePath } from "next/cache";
 
 const FormSchema = z.object({
@@ -49,5 +51,34 @@ export default async function createInvoice(formData: FormData) {
 
   // revalidatePath("/dashboard/invoices");
 
+  redirect("/dashboard/invoices");
+}
+
+// UPDATE INVOICE
+
+// Use Zod to update the expected types
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
+
+// ...
+
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get("customerId"),
+    amount: formData.get("amount"),
+    status: formData.get("status"),
+  });
+
+  const amountInCents = amount * 100;
+
+  await db
+    .update(invoicesTable)
+    .set({
+      customer_id: `${customerId}`,
+      amount: `${amountInCents}`,
+      status: `${status}`,
+    })
+    .where(eq(invoicesTable.id, id));
+
+  // revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }

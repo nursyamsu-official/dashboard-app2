@@ -162,17 +162,25 @@ export async function fetchInvoicesPages(query: string) {
 
 export async function fetchInvoiceById(id: string) {
   try {
-    const data = await sql<InvoiceForm>`
-      SELECT
-        invoices.id,
-        invoices.customer_id,
-        invoices.amount,
-        invoices.status
-      FROM invoices
-      WHERE invoices.id = ${id};
-    `;
+    // const data = await sql<InvoiceForm>`
+    //   SELECT
+    //     invoices.id,
+    //     invoices.customer_id,
+    //     invoices.amount,
+    //     invoices.status
+    //   FROM invoices
+    //   WHERE invoices.id = ${id};
+    // `;
 
-    const invoice = data.rows.map((invoice) => ({
+    const data = await db
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.id, id));
+
+    console.log(data);
+
+    // const invoice = data.rows.map((invoice) => ({
+    const invoice = data.map((invoice) => ({
       ...invoice,
       // Convert amount from cents to dollars
       amount: invoice.amount / 100,
