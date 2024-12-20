@@ -1,10 +1,10 @@
 "use server";
 
-import { custom, z } from "zod";
+import { z } from "zod";
 import { db } from "@/src";
 import { invoicesTable } from "@/src/db/schema";
 import { redirect } from "next/navigation";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 // import { revalidatePath } from "next/cache";
 
@@ -38,17 +38,20 @@ export default async function createInvoice(formData: FormData) {
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split("T")[0];
 
-  await db.insert(invoicesTable).values({
-    customer_id: `${customerId}`,
-    amount: `${amount}`,
-    status: `${status}`,
-    date: `${date}`,
-  });
+  try {
+    await db.insert(invoicesTable).values({
+      customer_id: `${customerId}`,
+      amount: `${amount}`,
+      status: `${status}`,
+      date: `${date}`,
+    });
+  } catch (error) {
+    return {
+      message: "Database Error: Failed to Create Invoice.",
+    };
+  }
 
-  // revalidatePath secara default di next.js15 tidak perlu karena default fetch datanya dinamis.
-  // perlu di explore bagaimana jika impelmentasi cache utk data2 yg berat sehingga perlu revalidate
-  // jika ada insert/update/delete
-
+  // Next.js 15 no cache by default, so didn't need "rrevalidatePath"
   // revalidatePath("/dashboard/invoices");
 
   redirect("/dashboard/invoices");
@@ -70,15 +73,31 @@ export async function updateInvoice(id: string, formData: FormData) {
 
   const amountInCents = amount * 100;
 
-  await db
-    .update(invoicesTable)
-    .set({
-      customer_id: `${customerId}`,
-      amount: `${amountInCents}`,
-      status: `${status}`,
-    })
-    .where(eq(invoicesTable.id, id));
+  try {
+    await db
+      .update(invoicesTable)
+      .set({
+        customer_id: `${customerId}`,
+        amount: `${amountInCents}`,
+        status: `${status}`,
+      })
+      .where(eq(invoicesTable.id, id));
+  } catch (error) {
+    return { message: "Database Error: Failed to Update Invoice." };
+  }
 
   // revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
+}
+
+export async function deleteInvoice(id: string) {
+  throw new Error("Failed to Delete Invoice");
+
+  try {
+    await db.delete(invoicesTable).where(eq(invoicesTable.id, id));
+    revalidatePath("/dashboard/invoices");
+    return { message: "Deleted Invoice" };
+  } catch (error) {
+    return { message: "Database Error: Failed to Delete Invoice." };
+  }
 }
